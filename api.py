@@ -1,65 +1,87 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-from typing import List, Dict
-import pandas as pd
+from typing import List
+import joblib
+from scipy.sparse import hstack
+import spacy
+import nltk
+import re
+from nltk.corpus import stopwords
+from num2words import num2words
+import unicodedata
 
-# Importar las funciones de tu pipeline
-from pipeline import load_model_and_predict, train_and_save_model, expand_contractions_es, tokenize_with_spacy_batch, preprocessing, process_batch
+# Cargar modelo entrenado y vectorizadores
+model = joblib.load("modelo.pkl")
+vectorizers = joblib.load("vectorizers.pkl")
 
-# Si no cuentas con una función que procese un DataFrame (sin cargar desde CSV),
-# la definimos aquí para el endpoint de reentrenamiento:
-def process_dataframe(data: pd.DataFrame) -> pd.DataFrame:
-    # Validar que existan las columnas requeridas
-    required_columns = ["Titulo", "Descripcion", "Label"]
-    for col in required_columns:
-        if col not in data.columns:
-            raise ValueError(f"Error: La columna '{col}' no está presente en el dataset.")
-    
-    # Rellenar valores nulos
-    data["Titulo"] = data["Titulo"].fillna("")
-    data["Descripcion"] = data["Descripcion"].fillna("")
-    
-    # Expansión de contracciones
-    data["Titulo"] = data["Titulo"].apply(expand_contractions_es)
-    data["Descripcion"] = data["Descripcion"].apply(expand_contractions_es)
-    
-    # Tokenización
-    data["Titles"] = tokenize_with_spacy_batch(data["Titulo"].tolist())
-    data["Descriptions"] = tokenize_with_spacy_batch(data["Descripcion"].tolist())
-    
-    # Preprocesamiento de texto
-    data["Titles1"] = data["Titles"].apply(preprocessing)
-    data["Descriptions1"] = data["Descriptions"].apply(preprocessing)
-    
-    # Stemming y lematización (para Descripcion preprocesada)
-    stems, lemmas = process_batch(data["Descriptions1"].tolist())
-    data["Stems"] = stems
-    data["Lemmas"] = lemmas
-    return data
+# Cargar modelo de lenguaje en español de spaCy
+nlp = spacy.load("es_core_news_sm")
 
-# Definición de modelos para los endpoints usando Pydantic
-class NewsInput(BaseModel):
-    text: str
+app = FastAPI()
 
-class RetrainData(BaseModel):
-    data: List[Dict]  # Cada diccionario debe incluir: Titulo, Descripcion y Label (además de otros campos si los hay)
+# Definir estructura de entrada para predicción
+class PredictionInput(BaseModel):
+    titulos: List[str]
+    descripciones: List[str]
 
-# Crear la instancia de FastAPI
-app = FastAPI(title="API para detección y reentrenamiento de Fake News en Español")
+# Funciones de preprocesamiento
+def remove_non_ascii(words):
+    return [unicodedata.normalize('NFKD', word).encode('ascii', 'ignore').decode('utf-8', 'ignore') for word in words]
 
-# Endpoint de predicción
+def to_lowercase(words):
+    return [word.lower() for word in words if word]
+
+def remove_punctuation(words):
+    return [re.sub(r'[^\w\sáéíóúñÁÉÍÓÚÑ]', '', word) for word in words if word]
+
+def replace_numbers(words):
+    return [num2words(word, lang='es') if word.isdigit() else word for word in words]
+
+def remove_stopwords(words):
+    stop_words = set(stopwords.words('spanish'))
+    return [word for word in words if word not in stop_words]
+
+def tokenize_with_spacy(text):
+    return [token.text for token in nlp(text)]
+
+def preprocessing(text):
+    words = tokenize_with_spacy(text)
+    words = to_lowercase(words)
+    words = replace_numbers(words)
+    words = remove_punctuation(words)
+    words = remove_non_ascii(words)
+    words = remove_stopwords(words)
+    return words
+
 @app.post("/predict")
-def predict(news: NewsInput):
-    result = load_model_and_predict(news.text)
-    return result
+def predict(input_data: PredictionInput):
+    # Validar que las listas tienen el mismo tamaño
+    if len(input_data.titulos) != len(input_data.descripciones):
+        return {"error": "Las listas de títulos y descripciones deben tener el mismo tamaño"}
 
-# Endpoint de reentrenamiento
-@app.post("/retrain")
-def retrain(retrain_data: RetrainData):
-    # Convertir la lista de diccionarios a DataFrame
-    df_new = pd.DataFrame(retrain_data.data)
-    # Procesar el DataFrame para obtener las columnas necesarias y aplicarle el preprocesamiento
-    processed_df = process_dataframe(df_new)
-    # Reentrenar y guardar el modelo usando los nuevos datos
-    train_and_save_model(processed_df)
-    return {"message": "Modelo reentrenado exitosamente."}
+    # Tokenización y preprocesamiento en batch
+    titulos_tokens = [preprocessing(titulo) for titulo in input_data.titulos]
+    descripciones_tokens = [preprocessing(desc) for desc in input_data.descripciones]
+
+    # Vectorización en batch
+    X_titulos = vectorizers["Titles1"].transform([" ".join(tokens) for tokens in titulos_tokens])
+    X_descripciones = vectorizers["Descriptions1"].transform([" ".join(tokens) for tokens in descripciones_tokens])
+
+    # Combinar características
+    X_combined = hstack([X_titulos, X_descripciones])
+
+    # Predicciones en batch
+    predictions = model.predict(X_combined)
+    probabilities = model.predict_proba(X_combined).max(axis=1)
+
+    # Construcción de la respuesta
+    results = [
+        {"prediction": int(pred), "probability": float(prob)}
+        for pred, prob in zip(predictions, probabilities)
+    ]
+
+    return {"results": results}
+
+@app.get("/")
+def read_root():
+    return {"message": "API de clasificación de noticias activa"}
