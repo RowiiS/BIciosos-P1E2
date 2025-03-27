@@ -1,87 +1,83 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from pydantic import BaseModel
 from typing import List
-import joblib
-from scipy.sparse import hstack
-import spacy
-import nltk
-import re
-from nltk.corpus import stopwords
-from num2words import num2words
-import unicodedata
+import pandas as pd
+import io
 
-# Cargar modelo entrenado y vectorizadores
-model = joblib.load("modelo.pkl")
-vectorizers = joblib.load("vectorizers.pkl")
+# Importar funciones del pipeline
+from pipeline import (
+    load_model_and_predict,
+    train_and_save_model,
+    expand_contractions_es,
+    tokenize_with_spacy_batch,
+    preprocessing,
+    process_batch,
+)
 
-# Cargar modelo de lenguaje en español de spaCy
-nlp = spacy.load("es_core_news_sm")
+app = FastAPI(title="API para detección y reentrenamiento de Fake News en Español")
 
-app = FastAPI()
+# Modelo de entrada para predicción con múltiples textos
+class NewsBatchInput(BaseModel):
+    noticias: List[dict]  # Lista de diccionarios con "Titulo" y "Descripcion"
 
-# Definir estructura de entrada para predicción
-class PredictionInput(BaseModel):
-    titulos: List[str]
-    descripciones: List[str]
+# Función para procesar un DataFrame
+def process_dataframe(data: pd.DataFrame) -> pd.DataFrame:
+    # Validar que existan las columnas necesarias
+    required_columns = ["Label", "Titulo", "Descripcion"]
+    for col in required_columns:
+        if col not in data.columns:
+            raise ValueError(f"Error: La columna '{col}' no está presente en el dataset.")
 
-# Funciones de preprocesamiento
-def remove_non_ascii(words):
-    return [unicodedata.normalize('NFKD', word).encode('ascii', 'ignore').decode('utf-8', 'ignore') for word in words]
+    # Rellenar valores nulos
+    data["Titulo"] = data["Titulo"].fillna("")
+    data["Descripcion"] = data["Descripcion"].fillna("")
 
-def to_lowercase(words):
-    return [word.lower() for word in words if word]
+    # Expansión de contracciones
+    data["Titulo"] = data["Titulo"].apply(expand_contractions_es)
+    data["Descripcion"] = data["Descripcion"].apply(expand_contractions_es)
 
-def remove_punctuation(words):
-    return [re.sub(r'[^\w\sáéíóúñÁÉÍÓÚÑ]', '', word) for word in words if word]
+    # Tokenización
+    data["Titles"] = tokenize_with_spacy_batch(data["Titulo"].tolist())
+    data["Descriptions"] = tokenize_with_spacy_batch(data["Descripcion"].tolist())
 
-def replace_numbers(words):
-    return [num2words(word, lang='es') if word.isdigit() else word for word in words]
+    # Preprocesamiento de texto
+    data["Titles1"] = data["Titles"].apply(preprocessing)
+    data["Descriptions1"] = data["Descriptions"].apply(preprocessing)
 
-def remove_stopwords(words):
-    stop_words = set(stopwords.words('spanish'))
-    return [word for word in words if word not in stop_words]
+    # Stemming y lematización (para Descripcion preprocesada)
+    stems, lemmas = process_batch(data["Descriptions1"].tolist())
+    data["Stems"] = stems
+    data["Lemmas"] = lemmas
 
-def tokenize_with_spacy(text):
-    return [token.text for token in nlp(text)]
+    return data
 
-def preprocessing(text):
-    words = tokenize_with_spacy(text)
-    words = to_lowercase(words)
-    words = replace_numbers(words)
-    words = remove_punctuation(words)
-    words = remove_non_ascii(words)
-    words = remove_stopwords(words)
-    return words
-
+# Endpoint de predicción para múltiples noticias
 @app.post("/predict")
-def predict(input_data: PredictionInput):
-    # Validar que las listas tienen el mismo tamaño
-    if len(input_data.titulos) != len(input_data.descripciones):
-        return {"error": "Las listas de títulos y descripciones deben tener el mismo tamaño"}
+def predict(news_batch: NewsBatchInput):
+    resultados = []
+    for noticia in news_batch.noticias:
+        titulo = noticia.get("Titulo", "")
+        descripcion = noticia.get("Descripcion", "")
+        texto_completo = f"{titulo}. {descripcion}"
+        resultado = load_model_and_predict(texto_completo)
+        resultados.append({"Titulo": titulo, "Descripcion": descripcion, "Prediccion": resultado})
+    return {"resultados": resultados}
 
-    # Tokenización y preprocesamiento en batch
-    titulos_tokens = [preprocessing(titulo) for titulo in input_data.titulos]
-    descripciones_tokens = [preprocessing(desc) for desc in input_data.descripciones]
+# Endpoint para reentrenamiento desde CSV
+@app.post("/retrain")
+async def retrain(file: UploadFile = File(...)):
+    try:
+        # Leer el archivo CSV
+        content = await file.read()
+        df = pd.read_csv(io.StringIO(content.decode("utf-8")), sep=";")
 
-    # Vectorización en batch
-    X_titulos = vectorizers["Titles1"].transform([" ".join(tokens) for tokens in titulos_tokens])
-    X_descripciones = vectorizers["Descriptions1"].transform([" ".join(tokens) for tokens in descripciones_tokens])
+        # Procesar el DataFrame
+        processed_df = process_dataframe(df)
 
-    # Combinar características
-    X_combined = hstack([X_titulos, X_descripciones])
+        # Reentrenar y guardar el modelo
+        train_and_save_model(processed_df)
 
-    # Predicciones en batch
-    predictions = model.predict(X_combined)
-    probabilities = model.predict_proba(X_combined).max(axis=1)
+        return {"message": "Modelo reentrenado exitosamente."}
 
-    # Construcción de la respuesta
-    results = [
-        {"prediction": int(pred), "probability": float(prob)}
-        for pred, prob in zip(predictions, probabilities)
-    ]
-
-    return {"results": results}
-
-@app.get("/")
-def read_root():
-    return {"message": "API de clasificación de noticias activa"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error al procesar el archivo: {str(e)}")
