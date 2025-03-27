@@ -161,12 +161,14 @@ def load_model_and_predict(text_data):
     model = joblib.load("modelo.pkl")
     vectorizers = joblib.load("vectorizers.pkl")
 
+    for vectorizer in vectorizers.values():
+        vectorizer.fixed_vocabulary_ = True 
     # Tokenizar y preprocesar el texto
     tokens = tokenize_with_spacy_batch([text_data])[0]
     processed_text = preprocessing(tokens)
 
     # Vectorizar con cada modelo de Tfidf
-    X_input = hstack([vectorizers[col].transform([" ".join(processed_text)]) for col in ["Titles1", "Descriptions1", "Stems", "Lemmas"]])
+    X_input = hstack([vectorizers[col].transform([" ".join(processed_text)]) for col in vectorizers.keys()])
 
     # Predecir
     prediction = model.predict(X_input)[0]
@@ -181,12 +183,12 @@ def load_model_and_predict(text_data):
 if __name__ == "__main__":
     file_path = "fake_news_spanish.csv"  # Ruta del dataset
 
-    print("📥 Cargando y procesando datos...")
+    print("Cargando y procesando datos...")
     train_data, test_data = load_and_process_data(file_path)
 
-    print("🎯 Entrenando modelo...")
+    print("Entrenando modelo...")
     train_and_save_model(train_data)
 
     # Prueba con un texto
     resultado = load_model_and_predict("El presidente anunció una nueva reforma educativa.")
-    print("📢 Resultado de predicción:", resultado)
+    print("Resultado de predicción:", resultado)
