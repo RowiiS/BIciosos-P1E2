@@ -188,7 +188,3 @@ if __name__ == "__main__":
 
     print("Entrenando modelo...")
     train_and_save_model(train_data)
-
-    # Prueba con un texto
-    resultado = load_model_and_predict("El presidente anunció una nueva reforma educativa.")
-    print("Resultado de predicción:", resultado)
