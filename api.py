@@ -3,6 +3,8 @@ from pydantic import BaseModel
 from typing import List
 import pandas as pd
 import io
+from fastapi.middleware.cors import CORSMiddleware
+
 
 # Importar funciones del pipeline
 from pipeline import (
@@ -15,6 +17,16 @@ from pipeline import (
 )
 
 app = FastAPI(title="API para detección y reentrenamiento de Fake News en Español")
+
+# Habilitar CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Permitir cualquier origen
+    allow_credentials=True,
+    allow_methods=["*"],  # Permitir todos los métodos
+    allow_headers=["*"],  # Permitir todos los headers
+)
+
 
 # Modelo de entrada para predicción con múltiples textos
 class NewsBatchInput(BaseModel):
