@@ -46,7 +46,7 @@ const Retrain = () => {
       <div className="retrain-box">
         <h2>Reentrenar Modelo</h2>
         <p className="retrain-description">
-          Sube un archivo <strong>CSV</strong> con nuevos datos para mejorar la precisión del modelo de detección de Fake News.
+          Sube un archivo <strong>CSV</strong> con nuevos datos para mejorar la precisión del modelo de detección de Fake News. Si el archivo es muy grande, ten paciencia, el reentrenamiento puede tardar un poco.
         </p>
 
         <div className="csv-format">
