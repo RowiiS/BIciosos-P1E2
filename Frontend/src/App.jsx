@@ -1,7 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Home from "./Componentes/Home";
 import Predict from "./Componentes/Predict";
-import Retrain from "./Componentes/Retrain"; // Asegúrate de tener este componente
+import Retrain from "./Componentes/Retrain";
 
 function App() {
   return (
