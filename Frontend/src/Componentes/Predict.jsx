@@ -134,7 +134,7 @@ const Predict = () => {
           )}
 
           {resultados.length === 0 ? (
-            <p className="no-results">🔎 Ingresa una noticia para analizar...</p>
+            <p className="no-results">Ingresa una noticia para analizar...</p>
           ) : (
             resultados.map((resultado, index) => {
               const { mensaje, recomendacion, color } = getRecommendation(resultado.Prediccion.prediction, resultado.Prediccion.probability);
