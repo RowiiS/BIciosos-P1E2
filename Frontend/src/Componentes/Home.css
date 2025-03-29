@@ -1,0 +1,57 @@
+
+.home-container {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #1a1a1a, #2c2c2c);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    width: 100vw; 
+  }
+  
+  
+  .title {
+    color: #ffffff;
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin-bottom: 15px;
+  }
+  
+  .subtitle {
+    color: #bdbdbd;
+    font-size: 1.2rem;
+    max-width: 600px;
+    margin-bottom: 40px;
+  }
+  
+
+  .card-option {
+    display: block;
+    background: #292929;
+    color: #ffffff;
+    padding: 25px;
+    border-radius: 15px;
+    text-align: center;
+    text-decoration: none;
+    transition: all 0.3s ease-in-out;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
+  }
+  
+  .card-option:hover {
+    background: #383838;
+    transform: scale(1.05);
+  }
+  
+  
+  .card-option h2 {
+    font-size: 1.4rem;
+    margin-bottom: 10px;
+  }
+  
+  .card-option p {
+    font-size: 1rem;
+    color: #bdbdbd;
+  }
+
+  

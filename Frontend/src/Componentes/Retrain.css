@@ -1,0 +1,94 @@
+.retrain-container {
+    min-height: 100vh;
+    width: 100vw;
+    background: linear-gradient(135deg, #1a1a1a, #2c2c2c);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    color: white;
+  }
+  
+  .retrain-box {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    max-width: 600px;
+    width: 100%;
+    text-align: center;
+  }
+  
+  .retrain-box h2 {
+    margin-bottom: 10px;
+  }
+  
+  .retrain-description {
+    font-size: 16px;
+    color: #ccc;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  
+  .csv-format {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    text-align: left;
+    font-size: 14px;
+  }
+  
+  .csv-format h3 {
+    margin-bottom: 10px;
+  }
+  
+  .csv-format code {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2px 6px;
+    border-radius: 5px;
+  }
+  
+  .csv-format pre {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 10px;
+    border-radius: 5px;
+    overflow-x: auto;
+  }
+  
+  .file-input {
+    width: 100%;
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+    font-size: 16px;
+    background: white;
+    margin-bottom: 10px;
+  }
+  
+  .upload-button {
+    background: #777;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-size: 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+  
+  .upload-button:hover {
+    background: #666;
+  }
+  
+  .upload-button:disabled {
+    background: #555;
+    cursor: not-allowed;
+  }
+  
+  .message {
+    margin-top: 15px;
+    font-weight: bold;
+  }
+  
