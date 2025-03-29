@@ -12,19 +12,28 @@ const Predict = () => {
     setNoticias(updatedNoticias);
   };
 
+  const handleAddNoticia = () => {
+    setNoticias([...noticias, { Titulo: "", Descripcion: "" }]);
+  };
+
+  const handleRemoveNoticia = (index) => {
+    const updatedNoticias = noticias.filter((_, i) => i !== index);
+    setNoticias(updatedNoticias);
+  };
+
   const handlePredict = async () => {
     const predicciones = await predictFakeNews(noticias);
     setResultados(predicciones);
   };
 
-  const getRecommendation = (prediction) => {
-    if (prediction === 1) {
+  const getRecommendation = (prediction, probability) => {
+    if (probability >= 0.6) {
       return {
         mensaje: "✅ La noticia parece ser real.",
         recomendacion: [
-          "Para periodistas: Aún así, sugerimos verificar con fuentes oficiales que te permitan tener seguridad a la hora de publicar",
-          "Para agencias gubernamentales: Considera emitir un comunicado oficial para reforzar la información",
-            "Para el público: Considera que la fuente de la noticia puede ser confiable, pero siempre es bueno contrastar con otras fuentes",
+          "Para periodistas: Aún así, sugerimos verificar con fuentes oficiales para mayor seguridad.",
+          "Para agencias gubernamentales: Considera emitir un comunicado oficial para reforzar la información.",
+          "Para el público: La fuente puede ser confiable, pero siempre es bueno contrastar con otras fuentes."
         ],
         color: "#4caf50"
       };
@@ -32,9 +41,9 @@ const Predict = () => {
       return {
         mensaje: "❌ La noticia podría ser falsa.",
         recomendacion: [
-          "Para periodistas: Investiga fuentes primarias y contacta expertos antes de difundir",
-          "Para agencias gubernamentales: Considera emitir una alerta oficial y aclarar la información",
-            "Para el público: Verifica la información en fuentes confiables antes de compartirla con tus familiares, amigos o conocidos",
+          "Para periodistas: Investiga fuentes primarias y contacta expertos antes de difundir.",
+          "Para agencias gubernamentales: Considera emitir una alerta oficial y aclarar la información.",
+          "Para el público: Verifica la información en fuentes confiables antes de compartirla."
         ],
         color: "#e74c3c"
       };
@@ -46,8 +55,7 @@ const Predict = () => {
       <div className="predict-box">
         <h2>🔍 Detección de Fake News</h2>
         <p className="predict-description">
-          Ingresa el título y la descripción de una noticia en los campos siguientes y presiona <strong>"Predecir"</strong>.
-          Nuestra Modelo de aprendizaje automático analizará la información y te dirá si es real o falsa con una probabilidad de certeza.
+          Ingresa el título y la descripción de una noticia y presiona <strong>"Predecir"</strong>.
         </p>
 
         {noticias.map((noticia, index) => (
@@ -63,9 +71,13 @@ const Predict = () => {
               value={noticia.Descripcion}
               onChange={(e) => handleChange(index, "Descripcion", e.target.value)}
             />
+            {noticias.length > 1 && (
+              <button className="remove-button" onClick={() => handleRemoveNoticia(index)}> Eliminar noticia</button>
+            )}
           </div>
         ))}
 
+        <button className="add-button" onClick={handleAddNoticia}> + Agregar otra noticia</button>
         <button className="predict-button" onClick={handlePredict}>Predecir</button>
 
         <div className="results">
@@ -74,7 +86,7 @@ const Predict = () => {
             <p className="no-results">🔎 Ingresa una noticia para analizar...</p>
           ) : (
             resultados.map((resultado, index) => {
-              const { mensaje, recomendacion, color } = getRecommendation(resultado.Prediccion.prediction);
+              const { mensaje, recomendacion, color } = getRecommendation(resultado.Prediccion.prediction, resultado.Prediccion.probability);
 
               return (
                 <div key={index} className="result-card" style={{ borderLeft: `5px solid ${color}` }}>
