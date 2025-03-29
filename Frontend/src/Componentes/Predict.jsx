@@ -1,10 +1,25 @@
-import { useState } from "react";
-import { predictFakeNews } from "../api";
+import { useState, useEffect } from "react";
+import { predictFakeNews, getModelMetrics, getTopWords, checkInfluentialWords } from "../api";
 import "./Predict.css";
 
 const Predict = () => {
   const [noticias, setNoticias] = useState([{ Titulo: "", Descripcion: "" }]);
   const [resultados, setResultados] = useState([]);
+  const [metrics, setMetrics] = useState(null);
+  const [topWords, setTopWords] = useState([]);
+  const [alertWords, setAlertWords] = useState([]);
+
+  useEffect(() => {
+    const fetchMetricsAndWords = async () => {
+      const metricsData = await getModelMetrics();
+      setMetrics(metricsData);
+
+      const wordsData = await getTopWords();
+      setTopWords(wordsData.words);
+    };
+
+    fetchMetricsAndWords();
+  }, []);
 
   const handleChange = (index, field, value) => {
     const updatedNoticias = [...noticias];
@@ -17,14 +32,26 @@ const Predict = () => {
   };
 
   const handleRemoveNoticia = (index) => {
-    const updatedNoticias = noticias.filter((_, i) => i !== index);
-    setNoticias(updatedNoticias);
+    setNoticias(noticias.filter((_, i) => i !== index));
   };
 
+
   const handlePredict = async () => {
+    // Hacer la predicción
     const predicciones = await predictFakeNews(noticias);
     setResultados(predicciones);
+  
+    const wordsFoundPromises = noticias.map((noticia) => checkInfluentialWords(noticia));
+    const wordsFoundResponses = await Promise.all(wordsFoundPromises);
+  
+    console.log("Palabras influyentes encontradas por cada noticia:", wordsFoundResponses);
+  
+    const matchedWords = wordsFoundResponses.flat(); 
+  
+    setAlertWords(matchedWords); 
   };
+  
+  
 
   const getRecommendation = (prediction, probability) => {
     if (probability >= 0.6) {
@@ -54,9 +81,26 @@ const Predict = () => {
     <div className="predict-container">
       <div className="predict-box">
         <h2>🔍 Detección de Fake News</h2>
-        <p className="predict-description">
-          Ingresa el título y la descripción de una noticia y presiona <strong>"Predecir"</strong>.
-        </p>
+
+        {metrics && (
+  <p className="metrics-info">
+    <strong>📊 Métricas del modelo:</strong><br />
+    🔹 <strong>Precisión:</strong> {metrics.precision.toFixed(4)}  
+    (Indica qué tan bien el modelo evita falsos positivos, es decir, cuántas de las noticias clasificadas como falsas realmente lo son).<br />
+    🔹 <strong>Recall:</strong> {metrics.recall.toFixed(4)}  
+    (Mide la capacidad del modelo para detectar todas las Fake News, evitando falsos negativos).<br />
+    🔹 <strong>F1-score:</strong> {metrics.f1_score.toFixed(4)}  
+    (Es un equilibrio entre precisión y recall; lo ideal es que no haya mucha diferencia entre ellos para evitar sobreajuste).<br /><br />
+    📌 Un modelo equilibrado debe tener valores de precisión y recall similares para evitar sesgos y mejorar la confiabilidad en la detección de Fake News.
+  </p>
+)}
+
+
+        {topWords.length > 0 && (
+          <p className="top-words-info">
+            -  <strong>Top 10 palabras influyentes en Fake News:</strong> {topWords.slice(0, 10).join(", ")}
+          </p>
+        )}
 
         {noticias.map((noticia, index) => (
           <div key={index} className="input-group">
@@ -72,16 +116,23 @@ const Predict = () => {
               onChange={(e) => handleChange(index, "Descripcion", e.target.value)}
             />
             {noticias.length > 1 && (
-              <button className="remove-button" onClick={() => handleRemoveNoticia(index)}> Eliminar noticia</button>
+              <button className="remove-button" onClick={() => handleRemoveNoticia(index)}>Eliminar noticia</button>
             )}
           </div>
         ))}
 
-        <button className="add-button" onClick={handleAddNoticia}> + Agregar otra noticia</button>
+        <button className="add-button" onClick={handleAddNoticia}>+ Agregar otra noticia</button>
         <button className="predict-button" onClick={handlePredict}>Predecir</button>
 
         <div className="results">
           <h2>Resultados:</h2>
+
+          {alertWords.length > 0 && (
+            <p className="alert-words">
+             ⚠️ Se encontraron palabras clave dentro de las 1,500 más influyentes en Fake News:  <strong>{alertWords.join(", ")}</strong>
+            </p>
+          )}
+
           {resultados.length === 0 ? (
             <p className="no-results">🔎 Ingresa una noticia para analizar...</p>
           ) : (
