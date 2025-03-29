@@ -12,6 +12,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from scipy.sparse import hstack
+import json
 
 # Descargar recursos de NLTK (solo si no están descargados)
 nltk.download('stopwords')
@@ -118,40 +119,66 @@ def load_and_process_data(file_path):
 """
 🔹 Vectorización y Entrenamiento del Modelo
 """
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+import json  # Para guardar métricas en un archivo
+
 def train_and_save_model(train_data):
     y = train_data["Label"]
     vectorizers = {}
 
-    # Vectorizar columnas
+    # Función para vectorizar una columna
     def vectorize_column(column):
         vectorizer = TfidfVectorizer(max_features=5000)
         matrix = vectorizer.fit_transform(train_data[column].apply(lambda x: " ".join(x)))
         vectorizers[column] = vectorizer
         return matrix
 
+    # Vectorización de datos
     X_titles = vectorize_column("Titles1")
     X_desc = vectorize_column("Descriptions1")
     X_stems = vectorize_column("Stems")
     X_lemmas = vectorize_column("Lemmas")
 
+    # Combinar características
     X_combined = hstack([X_titles, X_desc, X_stems, X_lemmas])
 
-    # Dividir datos usando un split adicional para evaluar el modelo
+    # División en datos de entrenamiento y prueba
     X_train, X_test, y_train, y_test = train_test_split(X_combined, y, test_size=0.2, random_state=42, stratify=y)
 
-    # Entrenar modelo
+    # Entrenar el modelo
     model = RandomForestClassifier(n_estimators=100, random_state=42, class_weight="balanced")
     model.fit(X_train, y_train)
 
-    # Evaluar
+    # Evaluar el modelo
     y_pred = model.predict(X_test)
-    print("Precisión:", np.mean(y_pred == y_test))
+    metrics = {
+        "accuracy": accuracy_score(y_test, y_pred),
+        "precision": precision_score(y_test, y_pred),
+        "recall": recall_score(y_test, y_pred),
+        "f1_score": f1_score(y_test, y_pred)
+    }
 
-    # Guardar modelo y vectorizadores
+    # Obtener palabras más importantes del modelo
+    feature_importances = model.feature_importances_
+
+    # Concatenar todas las palabras de los vectorizadores
+    all_features = np.concatenate([vectorizers[col].get_feature_names_out() for col in vectorizers.keys()])
+
+    # Asegurar que no se intenten seleccionar más palabras de las que existen
+    num_palabras = min(1500, len(feature_importances))
+    top_indices = np.argsort(feature_importances)[-num_palabras:][::-1]
+    top_words = all_features[top_indices].tolist()
+
+    # Guardar modelo, vectorizadores y métricas
     joblib.dump(model, "modelo.pkl")
     joblib.dump(vectorizers, "vectorizers.pkl")
 
-    print("Modelo guardado exitosamente.")
+    with open("metrics.json", "w") as f:
+        json.dump({"metrics": metrics, "top_words": top_words}, f, indent=4)
+
+    print(" Modelo guardado exitosamente.")
+    print(" Métricas:", metrics)
+    print(" Palabras más importantes:", top_words[:10])  # Muestra solo las 10 primeras en la consola
 
 
 """

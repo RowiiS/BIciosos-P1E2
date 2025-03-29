@@ -93,3 +93,35 @@ async def retrain(file: UploadFile = File(...)):
 
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error al procesar el archivo: {str(e)}")
+    
+import json
+
+@app.get("/metrics")
+def get_metrics():
+    try:
+        with open("metrics.json", "r") as f:
+            data = json.load(f)
+        return data
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Métricas no encontradas. ¿Entrenaste el modelo?")
+
+
+class CheckWordsInput(BaseModel):
+    title: str
+    description: str
+
+@app.post("/check_important_words/")
+def check_important_words(input_data: CheckWordsInput):
+    try:
+        with open("metrics.json", "r") as f:
+            data = json.load(f)
+        
+        top_words = set(data.get("top_words", []))  # Convertir a conjunto para búsqueda rápida
+        words_in_text = set(input_data.title.lower().split() + input_data.description.lower().split())
+
+        matched_words = list(words_in_text & top_words)
+
+        return {"important_words_found": matched_words}
+
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="No se encontraron palabras importantes. ¿Entrenaste el modelo?")
