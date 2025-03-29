@@ -54,7 +54,7 @@ const Predict = () => {
   
 
   const getRecommendation = (prediction, probability) => {
-    if (probability >= 0.6) {
+    if (prediction == 1) {
       return {
         mensaje: "✅ La noticia parece ser real.",
         recomendacion: [
