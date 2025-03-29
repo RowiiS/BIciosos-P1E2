@@ -101,3 +101,34 @@ def check_important_words(input_data: CheckWordsInput):
     matched_words = list(words_in_text & top_words)
 
     return {"important_words_found": matched_words}
+
+# Función para procesar un DataFrame
+def process_dataframe(data: pd.DataFrame) -> pd.DataFrame:
+    # Validar que existan las columnas necesarias
+    required_columns = ["Label", "Titulo", "Descripcion"]
+    for col in required_columns:
+        if col not in data.columns:
+            raise ValueError(f"Error: La columna '{col}' no está presente en el dataset.")
+
+    # Rellenar valores nulos
+    data["Titulo"] = data["Titulo"].fillna("")
+    data["Descripcion"] = data["Descripcion"].fillna("")
+
+    # Expansión de contracciones
+    data["Titulo"] = data["Titulo"].apply(expand_contractions_es)
+    data["Descripcion"] = data["Descripcion"].apply(expand_contractions_es)
+
+    # Tokenización
+    data["Titles"] = tokenize_with_spacy_batch(data["Titulo"].tolist())
+    data["Descriptions"] = tokenize_with_spacy_batch(data["Descripcion"].tolist())
+
+    # Preprocesamiento de texto
+    data["Titles1"] = data["Titles"].apply(preprocessing)
+    data["Descriptions1"] = data["Descriptions"].apply(preprocessing)
+
+    # Stemming y lematización (para Descripcion preprocesada)
+    stems, lemmas = process_batch(data["Descriptions1"].tolist())
+    data["Stems"] = stems
+    data["Lemmas"] = lemmas
+
+    return data
