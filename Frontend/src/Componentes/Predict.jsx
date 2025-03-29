@@ -84,14 +84,14 @@ const Predict = () => {
 
         {metrics && (
   <p className="metrics-info">
-    <strong>📊 Métricas del modelo:</strong><br />
-    🔹 <strong>Precisión:</strong> {metrics.precision.toFixed(4)}  
-    (Indica qué tan bien el modelo evita falsos positivos, es decir, cuántas de las noticias clasificadas como falsas realmente lo son).<br />
-    🔹 <strong>Recall:</strong> {metrics.recall.toFixed(4)}  
-    (Mide la capacidad del modelo para detectar todas las Fake News, evitando falsos negativos).<br />
-    🔹 <strong>F1-score:</strong> {metrics.f1_score.toFixed(4)}  
-    (Es un equilibrio entre precisión y recall; lo ideal es que no haya mucha diferencia entre ellos para evitar sobreajuste).<br /><br />
-    📌 Un modelo equilibrado debe tener valores de precisión y recall similares para evitar sesgos y mejorar la confiabilidad en la detección de Fake News.
+    <strong>Métricas del modelo:</strong><br />
+    * <strong>Precisión:</strong> {metrics.precision.toFixed(4)}   
+      (Indica qué tan bien el modelo evita falsos positivos, es decir, cuántas de las noticias clasificadas como falsas realmente lo son).<br /><br></br>
+    * <strong>Recall:</strong> {metrics.recall.toFixed(4)}  
+     (Mide la capacidad del modelo para detectar todas las Fake News, evitando falsos negativos).<br /><br></br>
+    * <strong>F1-score:</strong> {metrics.f1_score.toFixed(4)}  
+     (Es un equilibrio entre precisión y recall; lo ideal es que no haya mucha diferencia entre ellos para evitar sobreajuste).<br /><br /><br></br>
+    - Un modelo equilibrado debe tener valores de precisión y recall similares para evitar sesgos y mejorar la confiabilidad en la detección de Fake News.
   </p>
 )}
 
